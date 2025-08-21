@@ -7,8 +7,54 @@ class FacialRecognitionApp {
         this.isRecognizing = false;
         this.recognitionInterval = null;
         
-        this.initializeEventListeners();
-        this.loadStudents();
+        this.checkAuthAndInit();
+    }
+
+    async checkAuthAndInit() {
+        try {
+            const response = await fetch('/api/auth/check');
+            const result = await response.json();
+            
+            if (!result.authenticated) {
+                // Usuário não está logado, redirecionar para login
+                window.location.href = '/login.html';
+                return;
+            }
+            
+            // Usuário está logado, inicializar a aplicação
+            this.initializeEventListeners();
+            this.loadStudents();
+            this.showWelcomeMessage(result.user);
+        } catch (error) {
+            console.error('Erro ao verificar autenticação:', error);
+            window.location.href = '/login.html';
+        }
+    }
+
+    showWelcomeMessage(user) {
+        // Adicionar mensagem de boas-vindas e botão de logout
+        const header = document.querySelector('h1');
+        if (header) {
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.style.cssText = 'text-align: right; margin-bottom: 1rem; font-size: 0.9rem;';
+            welcomeDiv.innerHTML = `
+                <span style="color: #666;">Bem-vindo, ${user.username}!</span>
+                <button id="logoutBtn" style="margin-left: 1rem; padding: 0.25rem 0.5rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Sair</button>
+            `;
+            header.parentNode.insertBefore(welcomeDiv, header);
+            
+            document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+        }
+    }
+
+    async logout() {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        } catch (error) {
+            console.error('Erro no logout:', error);
+            window.location.href = '/login.html';
+        }
     }
 
     initializeEventListeners() {
@@ -113,6 +159,7 @@ class FacialRecognitionApp {
         } finally {
             this.isRecognizing = false;
         }
+    }
 
     showRecognitionSuccess(student) {
         this.showStatus(`✅ Estudante reconhecido: ${student.name}`, 'success', 'recognitionStatus');
@@ -120,9 +167,18 @@ class FacialRecognitionApp {
         // Exibir imagem do estudante por 3 segundos
         this.showStudentDisplay(student);
         
+        // Parar o reconhecimento enquanto a imagem é exibida
+        if (this.recognitionInterval) {
+            clearInterval(this.recognitionInterval);
+            this.recognitionInterval = null;
+        }
+        
         setTimeout(() => {
             this.hideStudentDisplay();
             this.showStatus('Pronto para próximo reconhecimento', 'info', 'recognitionStatus');
+            
+            // Retomar o reconhecimento após 3 segundos
+            this.recognitionInterval = setInterval(() => this.captureAndRecognize(), 1000);
         }, 3000);
     }
 

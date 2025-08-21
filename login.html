@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistema de Reconhecimento Facial</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-header h1 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+        }
+
+        .login-header p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .register-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #666;
+        }
+
+        .register-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+        .status-message {
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .status-error {
+            background-color: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .status-success {
+            background-color: #efe;
+            color: #363;
+            border: 1px solid #cfc;
+        }
+
+        .status-info {
+            background-color: #eef;
+            color: #336;
+            border: 1px solid #ccf;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>🔐 Login</h1>
+            <p>Sistema de Reconhecimento Facial</p>
+        </div>
+
+        <div id="statusMessage" class="status-message hidden"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Usuário:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Senha:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <button type="submit" class="login-btn" id="loginBtn">
+                Entrar
+            </button>
+        </form>
+
+        <div class="register-link">
+            Não tem uma conta? <a href="#" id="registerLink">Criar conta</a>
+        </div>
+    </div>
+
+    <script>
+        class LoginManager {
+            constructor() {
+                this.loginForm = document.getElementById('loginForm');
+                this.loginBtn = document.getElementById('loginBtn');
+                this.registerLink = document.getElementById('registerLink');
+                this.statusMessage = document.getElementById('statusMessage');
+                
+                this.initEventListeners();
+                this.checkAuth();
+            }
+
+            initEventListeners() {
+                this.loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+                this.registerLink.addEventListener('click', (e) => this.showRegisterForm(e));
+            }
+
+            async checkAuth() {
+                try {
+                    const response = await fetch('/api/auth/check');
+                    const result = await response.json();
+                    
+                    if (result.authenticated) {
+                        // Usuário já está logado, redirecionar para a página principal
+                        window.location.href = '/';
+                    }
+                } catch (error) {
+                    console.error('Erro ao verificar autenticação:', error);
+                }
+            }
+
+            async handleLogin(e) {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                if (!username || !password) {
+                    this.showStatus('Por favor, preencha todos os campos', 'error');
+                    return;
+                }
+
+                this.loginBtn.disabled = true;
+                this.loginBtn.textContent = 'Entrando...';
+
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        this.showStatus('Login realizado com sucesso! Redirecionando...', 'success');
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 1500);
+                    } else {
+                        this.showStatus(result.error || 'Erro no login', 'error');
+                    }
+                } catch (error) {
+                    console.error('Erro no login:', error);
+                    this.showStatus('Erro de conexão. Tente novamente.', 'error');
+                } finally {
+                    this.loginBtn.disabled = false;
+                    this.loginBtn.textContent = 'Entrar';
+                }
+            }
+
+            showRegisterForm(e) {
+                e.preventDefault();
+                
+                const username = prompt('Digite o nome de usuário:');
+                if (!username) return;
+                
+                const password = prompt('Digite a senha:');
+                if (!password) return;
+                
+                const confirmPassword = prompt('Confirme a senha:');
+                if (password !== confirmPassword) {
+                    this.showStatus('As senhas não coincidem', 'error');
+                    return;
+                }
+                
+                this.handleRegister(username, password);
+            }
+
+            async handleRegister(username, password) {
+                try {
+                    const response = await fetch('/api/auth/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        this.showStatus('Conta criada com sucesso! Faça login.', 'success');
+                        document.getElementById('username').value = username;
+                        document.getElementById('password').focus();
+                    } else {
+                        this.showStatus(result.error || 'Erro ao criar conta', 'error');
+                    }
+                } catch (error) {
+                    console.error('Erro no registro:', error);
+                    this.showStatus('Erro de conexão. Tente novamente.', 'error');
+                }
+            }
+
+            showStatus(message, type) {
+                this.statusMessage.textContent = message;
+                this.statusMessage.className = `status-message status-${type}`;
+                this.statusMessage.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    this.statusMessage.classList.add('hidden');
+                }, 5000);
+            }
+        }
+
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', () => {
+            new LoginManager();
+        });
+    </script>
+</body>
+</html>
+
